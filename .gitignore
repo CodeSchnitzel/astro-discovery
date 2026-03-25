@@ -1,0 +1,25 @@
+# SSL certificates and private keys
+*.pem
+*.key
+*.crt
+certs/
+
+# Private configuration
+SSL_Certificate_Strategy.md
+
+# Python
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Uploaded files
+uploads/
+
+# Test photos
+*.NEF
+*.nef
+*.CR2
+*.cr2

@@ -1,5 +1,5 @@
 #!/bin/bash
-# StarFinder Plate Solver - solves NEF/JPG/FITS images
+# AstroDiscovery Plate Solver - solves NEF/JPG/FITS images
 # Runs Astrometry.net first, then feeds coordinates to ASTAP for a fast solve.
 # Usage: platesolve <image> [--fov degrees] [--ra hours] [--dec degrees]
 
@@ -88,7 +88,6 @@ ASTRO_MS=$(( (ASTRO_END - ASTRO_START) / 1000000 ))
 
 if [[ -f "${SOLVED_BASE}.solved" ]]; then
     echo "[+] SOLVED!  (${ASTRO_MS}ms)"
-    # Extract results and capture RA/Dec for ASTAP chaining
     PYOUT=$(python3 << PYEOF
 from astropy.io import fits
 import math
@@ -120,9 +119,7 @@ print("EXPORT:ASTRO_DEC_DEG=%.6f" % dec)
 print("EXPORT:ASTRO_FOV=%.4f" % fov_w)
 PYEOF
 )
-    # Display results
     echo "$PYOUT" | grep "^DISPLAY:" | sed 's/^DISPLAY://'
-    # Export variables for ASTAP chaining
     eval "$(echo "$PYOUT" | grep "^EXPORT:" | sed 's/^EXPORT:/export /')"
 else
     echo "[-] Failed to solve  (${ASTRO_MS}ms)"
@@ -136,23 +133,19 @@ echo "========================================="
 echo "  ASTAP"
 echo "========================================="
 
-# Build ASTAP command - chain from Astrometry.net result if available
-ASTAP_CMD="/opt/astap_cli/astap_cli -f $FITS_FILE -D d50 -d /opt/astap"
+ASTAP_CMD="astap_cli -f $FITS_FILE -D d50 -d /opt/astap"
 
 if [[ -n "$ASTRO_RA_DEG" && -n "$ASTRO_DEC_DEG" ]]; then
-    # Chain: use Astrometry.net solution as hint
     ASTAP_RA_H=$(echo "$ASTRO_RA_DEG / 15" | bc -l)
     ASTAP_SPD=$(echo "90 + $ASTRO_DEC_DEG" | bc -l)
     ASTAP_FOV_USE="${ASTRO_FOV:-$FOV}"
     ASTAP_CMD="$ASTAP_CMD -fov $ASTAP_FOV_USE -ra $ASTAP_RA_H -spd $ASTAP_SPD -r 5"
     echo "[*] Using Astrometry.net solution as hint"
 elif [[ -n "$RA" && -n "$DEC" ]]; then
-    # Use user-provided hints
     SPD=$(echo "90 + $DEC" | bc)
     ASTAP_CMD="$ASTAP_CMD -fov $FOV -ra $RA -spd $SPD -r 10"
     echo "[*] Using user-provided coordinates as hint"
 else
-    # Blind solve
     ASTAP_CMD="$ASTAP_CMD -fov $FOV -r 180"
     echo "[*] Blind solve (no hints available)"
 fi
